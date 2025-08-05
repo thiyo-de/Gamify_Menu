@@ -1,0 +1,589 @@
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+// Constants
+const EFFECTS_DURATION = 1.5;
+const MAX_PULL = 80;
+
+// Game elements
+const arrowImg = document.getElementById("arrowImage");
+const bgMusic = document.getElementById("bgMusic");
+const shootSound = document.getElementById("shootSound");
+const hitSound = document.getElementById("hitSound");
+const missSound = document.getElementById("missSound");
+const pullSound = document.getElementById("pullSound");
+pullSound.volume = 0.3;
+
+let arrows = [];
+let mouseX = 0;
+let mouseY = 0;
+let isMouseDown = false;
+let pullStrength = 0;
+let isPullingSoundPlaying = false;
+
+let menuTargets = [
+  { label: "Expert", url: "https://supabase-chatter.lovable.app/chat" },
+  { label: "Cancers", url: "#cancers" },
+  { label: "Media", url: "#media" },
+  { label: "Vision", url: "#vision" },
+  { label: "7 Music OP", url: "#music" },
+  { label: "Event&", url: "#events" },
+  { label: "Community", url: "#community" },
+  { label: "Home", url: "#home" },
+  { label: "Support", url: "#support" },
+  { label: "Dorado", url: "#dorado" },
+  { label: "Cliente", url: "#cliente" },
+  { label: "Bar-Vicita", url: "#barvicita" },
+].map((item) => {
+  const tempCanvas = document.createElement("canvas");
+  const tempCtx = tempCanvas.getContext("2d");
+  tempCtx.font = "bold 15px Orbitron, sans-serif";
+  const textWidth = tempCtx.measureText(item.label).width;
+  const maxWidth = 200;
+  const calculatedWidth = Math.min(maxWidth, Math.max(120, textWidth + 30));
+
+  return {
+    ...item,
+    x: Math.random() * (canvas.width - calculatedWidth - 40) + 20,
+    y: Math.random() * (canvas.height / 2 - 100) + 20,
+    width: calculatedWidth,
+    height: 35,
+    vx: (Math.random() - 0.5) * 2,
+    vy: (Math.random() - 0.5) * 2,
+    element: null,
+  };
+});
+
+let bow = {
+  x: canvas.width / 2,
+  y: canvas.height - 100,
+  angle: 0,
+};
+
+// Initialize targets
+menuTargets.forEach((target) => {
+  target.element = document.createElement("div");
+  target.element.setAttribute("role", "button");
+  target.element.setAttribute("aria-label", `${target.label} navigation button`);
+  target.element.style.position = "absolute";
+  target.element.style.left = `${target.x}px`;
+  target.element.style.top = `${target.y}px`;
+  target.element.style.width = `${target.width}px`;
+  target.element.style.height = `${target.height}px`;
+  target.element.style.pointerEvents = "none";
+  target.element.style.opacity = "0";
+  document.body.appendChild(target.element);
+});
+
+// Create floating particles
+for (let i = 0; i < 120; i++) {
+  const dot = document.createElement("div");
+  dot.className = "particle";
+  dot.style.left = `${Math.random() * window.innerWidth}px`;
+  dot.style.animationDuration = `${5 + Math.random() * 15}s`;
+  dot.style.opacity = Math.random();
+  document.body.appendChild(dot);
+}
+
+// Event Listeners
+canvas.addEventListener("mousedown", (e) => {
+  isMouseDown = true;
+  startPullSound();
+});
+
+canvas.addEventListener("mouseup", (e) => {
+  if (isMouseDown) {
+    shootArrow(e.clientX, e.clientY);
+    stopPullSound();
+  }
+  isMouseDown = false;
+});
+
+canvas.addEventListener("mousemove", (e) => {
+  mouseX = e.clientX;
+  mouseY = e.clientY;
+  bow.angle = Math.atan2(mouseY - bow.y, mouseX - bow.x);
+});
+
+// Touch events
+let touchStartX = 0;
+let touchStartY = 0;
+
+canvas.addEventListener("touchstart", (e) => {
+  e.preventDefault();
+  isMouseDown = true;
+  const touch = e.touches[0];
+  touchStartX = touch.clientX;
+  touchStartY = touch.clientY;
+  mouseX = touchStartX;
+  mouseY = touchStartY;
+  startPullSound();
+});
+
+canvas.addEventListener("touchmove", (e) => {
+  e.preventDefault();
+  const touch = e.touches[0];
+  mouseX = touch.clientX;
+  mouseY = touch.clientY;
+
+  const dx = mouseX - touchStartX;
+  const dy = mouseY - touchStartY;
+  pullStrength = Math.min(Math.sqrt(dx * dx + dy * dy), MAX_PULL);
+
+  bow.angle = Math.atan2(mouseY - bow.y, mouseX - bow.x);
+});
+
+canvas.addEventListener("touchend", (e) => {
+  if (isMouseDown) {
+    shootArrow(mouseX, mouseY);
+    stopPullSound();
+  }
+  isMouseDown = false;
+});
+
+// Keyboard controls
+document.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowLeft") bow.angle -= 0.1;
+  if (e.key === "ArrowRight") bow.angle += 0.1;
+  if (e.key === " ") {
+    shootArrow(
+      bow.x + Math.cos(bow.angle) * 100,
+      bow.y + Math.sin(bow.angle) * 100
+    );
+  }
+});
+
+// Sound control functions
+function startPullSound() {
+  if (!isPullingSoundPlaying) {
+    pullSound.currentTime = 0;
+    pullSound.loop = true;
+    pullSound.play().catch(e => console.log("Pull sound error:", e));
+    isPullingSoundPlaying = true;
+  }
+}
+
+function stopPullSound() {
+  if (isPullingSoundPlaying) {
+    pullSound.pause();
+    isPullingSoundPlaying = false;
+  }
+}
+
+// Music toggle
+const musicToggle = document.getElementById("musicToggle");
+let musicPlaying = false;
+
+musicToggle.addEventListener("click", (e) => {
+  e.preventDefault();
+  if (musicPlaying) {
+    bgMusic.pause();
+    musicToggle.textContent = "🎵 Music: Off";
+  } else {
+    bgMusic.play().catch((e) => console.log("Audio play failed:", e));
+    musicToggle.textContent = "🎵 Music: On";
+  }
+  musicPlaying = !musicPlaying;
+});
+
+// Game functions
+function shootArrow(targetX, targetY) {
+  const angle = Math.atan2(targetY - bow.y, targetX - bow.x);
+  arrows.push({
+    x: bow.x,
+    y: bow.y,
+    angle,
+    speed: 5 + pullStrength / 5,
+    strength: pullStrength,
+  });
+  shootSound.currentTime = 0;
+  shootSound.play();
+  pullStrength = 0;
+  
+  // Create string release effect
+  createStringReleaseEffect(bow.x, bow.y, angle);
+}
+
+function createStringReleaseEffect(x, y, angle) {
+  const particles = 5;
+  for (let i = 0; i < particles; i++) {
+    const particle = document.createElement("div");
+    particle.className = "string-pull";
+    particle.style.left = `${x}px`;
+    particle.style.top = `${y}px`;
+    document.body.appendChild(particle);
+
+    const distance = 10 + Math.random() * 20;
+    const duration = 0.2 + Math.random() * 0.3;
+    const angleVariation = (Math.random() - 0.5) * 0.2;
+
+    gsap.to(particle, {
+      x: `+=${Math.cos(angle + angleVariation) * distance}`,
+      y: `+=${Math.sin(angle + angleVariation) * distance}`,
+      opacity: 0,
+      scale: 0,
+      duration: duration,
+      onComplete: () => particle.remove(),
+    });
+  }
+}
+
+function showEffect(selector, x, y, scale = 1) {
+  const effect = document.querySelector(selector);
+  if (!effect) return;
+
+  gsap.set(effect, {
+    left: `${x}px`,
+    top: `${y}px`,
+    opacity: 1,
+    scale: 0.5,
+    display: "block",
+  });
+
+  gsap.to(effect, {
+    opacity: 0,
+    scale: scale,
+    duration: EFFECTS_DURATION,
+    ease: "power2.out",
+    onComplete: () => {
+      gsap.set(effect, { display: "none" });
+    },
+  });
+}
+
+function drawMissMessage() {
+  const x = Math.random() * canvas.width;
+  const y = Math.random() * (canvas.height / 2);
+  showEffect(".miss", x, y, 1.5);
+  missSound.currentTime = 0;
+  missSound.play();
+}
+
+function drawBullseye(x, y, strength) {
+  showEffect(".bullseye", x, y, strength / 30);
+  hitSound.currentTime = 0;
+  hitSound.play();
+  
+  // Create hit message
+  const hitMessages = ["Bullseye!", "Perfect!", "Great Shot!", "Awesome!"];
+  const message = hitMessages[Math.floor(Math.random() * hitMessages.length)];
+  
+  const hitText = document.createElement("div");
+  hitText.className = "hit-message";
+  hitText.textContent = message;
+  hitText.style.left = `${x}px`;
+  hitText.style.top = `${y}px`;
+  document.body.appendChild(hitText);
+  
+  gsap.fromTo(hitText, {
+    opacity: 1,
+    y: 0,
+    scale: 0.8
+  }, {
+    opacity: 0,
+    y: -100,
+    scale: 1.2,
+    duration: EFFECTS_DURATION,
+    ease: "power2.out",
+    onComplete: () => hitText.remove()
+  });
+}
+
+function drawBow() {
+  ctx.save();
+  ctx.translate(bow.x, bow.y);
+  ctx.rotate(bow.angle);
+  ctx.scale(-1, 1);
+  const scale = 2.5;
+
+  // Bow body
+  ctx.strokeStyle = "#88ce02";
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(0, -30 * scale);
+  ctx.quadraticCurveTo(-30 * scale, 0, 0, 30 * scale);
+  ctx.stroke();
+
+  // Bow string
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(0, -30 * scale);
+  ctx.lineTo(pullStrength, 0);
+  ctx.lineTo(0, 30 * scale);
+  ctx.stroke();
+
+  // Aiming guide
+  ctx.strokeStyle = "rgba(255,255,255,0.2)";
+  ctx.setLineDash([5, 10]);
+  ctx.beginPath();
+  ctx.moveTo(pullStrength, 0);
+  ctx.lineTo(-150, 0);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+function drawArrow(arrow) {
+  ctx.save();
+  ctx.translate(arrow.x, arrow.y);
+  ctx.rotate(arrow.angle);
+  ctx.rotate(Math.PI / 2);
+
+  // Add glow effect
+  ctx.shadowColor = "gold";
+  ctx.shadowBlur = 10;
+  ctx.shadowOffsetX = 0;
+  ctx.shadowOffsetY = 0;
+
+  const w = arrowImg.naturalWidth || 60;
+  const h = (arrowImg.naturalHeight || 20) / 2;
+  ctx.drawImage(arrowImg, -w / 2, -h / 2, w, h);
+
+  ctx.restore();
+}
+
+function drawMenuTargets() {
+  const screenPadding = 20;
+
+  for (let target of menuTargets) {
+    // Update target position with boundary checks
+    target.x += target.vx;
+    target.y += target.vy;
+
+    // Keep targets within bounds
+    if (
+      target.x <= screenPadding ||
+      target.x + target.width >= canvas.width - screenPadding
+    ) {
+      target.vx *= -1;
+      target.x = Math.max(
+        screenPadding,
+        Math.min(target.x, canvas.width - target.width - screenPadding)
+      );
+    }
+    if (
+      target.y <= screenPadding ||
+      target.y + target.height >= canvas.height / 2 - screenPadding
+    ) {
+      target.vy *= -1;
+      target.y = Math.max(
+        screenPadding,
+        Math.min(target.y, canvas.height / 2 - target.height - screenPadding)
+      );
+    }
+
+    // Update accessibility button position
+    if (target.element) {
+      target.element.style.left = `${target.x}px`;
+      target.element.style.top = `${target.y}px`;
+    }
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.fillStyle = "rgba(255,215,0,0.3)";
+    ctx.strokeStyle = "#FFA500";
+    ctx.lineWidth = 2;
+    ctx.roundRect(target.x, target.y, target.width, target.height, 15);
+    ctx.fill();
+    ctx.stroke();
+
+    // Draw text with ellipsis if too long
+    ctx.fillStyle = "white";
+    ctx.font = "bold 14px Orbitron, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    // Measure text and apply ellipsis if needed
+    const text = target.label;
+    let metrics = ctx.measureText(text);
+    let textWidth = metrics.width;
+    const maxTextWidth = target.width - 20; // Padding
+
+    if (textWidth > maxTextWidth) {
+      let ellipsis = "...";
+      let ellipsisWidth = ctx.measureText(ellipsis).width;
+      let charWidth = textWidth / text.length;
+      let charsToShow = Math.floor((maxTextWidth - ellipsisWidth) / charWidth);
+
+      if (charsToShow > 0) {
+        const displayText = text.substring(0, charsToShow) + ellipsis;
+        ctx.fillText(
+          displayText,
+          target.x + target.width / 2,
+          target.y + target.height / 2
+        );
+      }
+    } else {
+      ctx.fillText(
+        text,
+        target.x + target.width / 2,
+        target.y + target.height / 2
+      );
+    }
+
+    ctx.restore();
+  }
+}
+
+function checkCollision(arrow, target) {
+  return (
+    arrow.x > target.x &&
+    arrow.x < target.x + target.width &&
+    arrow.y > target.y &&
+    arrow.y < target.y + target.height
+  );
+}
+
+function triggerExplosion(x, y) {
+  hitSound.currentTime = 0;
+  hitSound.play();
+
+  const particles = 20;
+  for (let i = 0; i < particles; i++) {
+    const particle = document.createElement("div");
+    particle.className = "explosion-particle";
+    particle.style.left = `${x}px`;
+    particle.style.top = `${y}px`;
+    document.body.appendChild(particle);
+
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 30 + Math.random() * 50;
+    const duration = 0.5 + Math.random() * 0.5;
+
+    gsap.to(particle, {
+      x: Math.cos(angle) * distance,
+      y: Math.sin(angle) * distance,
+      opacity: 0,
+      scale: 0,
+      duration: duration,
+      onComplete: () => particle.remove(),
+    });
+  }
+}
+
+function animateTargetHit(target) {
+  const pulse = document.createElement("div");
+  pulse.className = "menu-glow";
+  pulse.style.position = "absolute";
+  pulse.style.left = `${target.x}px`;
+  pulse.style.top = `${target.y}px`;
+  pulse.style.width = `${target.width}px`;
+  pulse.style.height = `${target.height}px`;
+  pulse.style.borderRadius = "20px";
+  pulse.style.border = "2px solid gold";
+  pulse.style.zIndex = 10;
+  document.body.appendChild(pulse);
+
+  gsap.to(pulse, {
+    opacity: 0,
+    scale: 1.5,
+    duration: 0.8,
+    onComplete: () => pulse.remove(),
+  });
+}
+
+function handleTargetCollisions() {
+  const targetPadding = 15;
+  const screenPadding = 20;
+
+  for (let i = 0; i < menuTargets.length; i++) {
+    const a = menuTargets[i];
+
+    // First check screen boundaries
+    if (a.x <= screenPadding) a.vx = Math.abs(a.vx);
+    if (a.x + a.width >= canvas.width - screenPadding) a.vx = -Math.abs(a.vx);
+    if (a.y <= screenPadding) a.vy = Math.abs(a.vy);
+    if (a.y + a.height >= canvas.height / 2 - screenPadding)
+      a.vy = -Math.abs(a.vy);
+
+    for (let j = i + 1; j < menuTargets.length; j++) {
+      const b = menuTargets[j];
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const distance = Math.hypot(dx, dy);
+      const minDist = (a.width + b.width) / 2 + targetPadding;
+
+      if (distance < minDist) {
+        const angle = Math.atan2(dy, dx);
+        const overlap = (minDist - distance) / 2;
+        a.x -= Math.cos(angle) * overlap;
+        a.y -= Math.sin(angle) * overlap;
+        b.x += Math.cos(angle) * overlap;
+        b.y += Math.sin(angle) * overlap;
+
+        // Swap velocities for bounce effect
+        [a.vx, b.vx] = [b.vx, a.vx];
+        [a.vy, b.vy] = [b.vy, a.vy];
+      }
+    }
+  }
+}
+
+// Polyfill for roundRect if needed
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+    if (w < 2 * r) r = w / 2;
+    if (h < 2 * r) r = h / 2;
+    this.beginPath();
+    this.moveTo(x + r, y);
+    this.arcTo(x + w, y, x + w, y + h, r);
+    this.arcTo(x + w, y + h, x, y + h, r);
+    this.arcTo(x, y + h, x, y, r);
+    this.arcTo(x, y, x + w, y, r);
+    this.closePath();
+    return this;
+  };
+}
+
+function update() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (isMouseDown && pullStrength < MAX_PULL) {
+    pullStrength += 2;
+  }
+
+  drawBow();
+  drawMenuTargets();
+
+  arrows.forEach((arrow, i) => {
+    arrow.x += Math.cos(arrow.angle) * arrow.speed;
+    arrow.y += Math.sin(arrow.angle) * arrow.speed;
+    drawArrow(arrow);
+
+    const hitTarget = menuTargets.find((t) => checkCollision(arrow, t));
+    if (hitTarget) {
+      triggerExplosion(arrow.x, arrow.y);
+      drawBullseye(arrow.x, arrow.y, arrow.strength);
+      animateTargetHit(hitTarget);
+      setTimeout(() => {
+        window.location.href = hitTarget.url;
+      }, 400);
+      arrows.splice(i, 1);
+    } else if (arrow.y < 0 || arrow.x < 0 || arrow.x > canvas.width) {
+      drawMissMessage();
+      arrows.splice(i, 1);
+    }
+  });
+
+  handleTargetCollisions();
+  requestAnimationFrame(update);
+}
+
+// Start the game
+update();
+
+// Handle window resize
+window.addEventListener("resize", () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  bow.x = canvas.width / 2;
+  bow.y = canvas.height - 100;
+});
+
+// Prevent text selection
+document.addEventListener("selectstart", function (e) {
+  e.preventDefault();
+});

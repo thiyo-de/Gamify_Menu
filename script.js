@@ -6,6 +6,7 @@ canvas.height = window.innerHeight;
 // Constants
 const EFFECTS_DURATION = 1.5;
 const MAX_PULL = 80;
+const MAX_BOW_ANGLE = Math.PI / 2; // 90 degrees left and right from center
 
 // Game elements
 const arrowImg = document.getElementById("arrowImage");
@@ -59,14 +60,17 @@ let menuTargets = [
 let bow = {
   x: canvas.width / 2,
   y: canvas.height - 100,
-  angle: 0,
+  angle: -Math.PI / 2, // Initialize pointing straight up
 };
 
 // Initialize targets
 menuTargets.forEach((target) => {
   target.element = document.createElement("div");
   target.element.setAttribute("role", "button");
-  target.element.setAttribute("aria-label", `${target.label} navigation button`);
+  target.element.setAttribute(
+    "aria-label",
+    `${target.label} navigation button`
+  );
   target.element.style.position = "absolute";
   target.element.style.left = `${target.x}px`;
   target.element.style.top = `${target.y}px`;
@@ -104,7 +108,21 @@ canvas.addEventListener("mouseup", (e) => {
 canvas.addEventListener("mousemove", (e) => {
   mouseX = e.clientX;
   mouseY = e.clientY;
-  bow.angle = Math.atan2(mouseY - bow.y, mouseX - bow.x);
+
+  // Calculate angle with limits
+  let angle = Math.atan2(mouseY - bow.y, mouseX - bow.x);
+
+  // Constrain angle to 180 degrees (-90° to +90° from vertical)
+  angle = Math.max(-Math.PI, Math.min(angle, 0)); // Limit to upward angles (-π to 0)
+
+  // Fix flipping when mouse is at bottom left
+  if (mouseX < bow.x && mouseY > bow.y) {
+    angle = -Math.PI; // Point straight left
+  } else if (mouseX > bow.x && mouseY > bow.y) {
+    angle = 0; // Point straight right
+  }
+
+  bow.angle = angle;
 });
 
 // Touch events
@@ -132,7 +150,18 @@ canvas.addEventListener("touchmove", (e) => {
   const dy = mouseY - touchStartY;
   pullStrength = Math.min(Math.sqrt(dx * dx + dy * dy), MAX_PULL);
 
-  bow.angle = Math.atan2(mouseY - bow.y, mouseX - bow.x);
+  // Calculate angle with limits
+  let angle = Math.atan2(mouseY - bow.y, mouseX - bow.x);
+  angle = Math.max(-Math.PI, Math.min(angle, 0)); // Limit to upward angles (-π to 0)
+
+  // Fix flipping when touch is at bottom left
+  if (mouseX < bow.x && mouseY > bow.y) {
+    angle = -Math.PI; // Point straight left
+  } else if (mouseX > bow.x && mouseY > bow.y) {
+    angle = 0; // Point straight right
+  }
+
+  bow.angle = angle;
 });
 
 canvas.addEventListener("touchend", (e) => {
@@ -143,16 +172,10 @@ canvas.addEventListener("touchend", (e) => {
   isMouseDown = false;
 });
 
-// Keyboard controls
+// Keyboard controls (removed spacebar functionality)
 document.addEventListener("keydown", (e) => {
-  if (e.key === "ArrowLeft") bow.angle -= 0.1;
-  if (e.key === "ArrowRight") bow.angle += 0.1;
-  if (e.key === " ") {
-    shootArrow(
-      bow.x + Math.cos(bow.angle) * 100,
-      bow.y + Math.sin(bow.angle) * 100
-    );
-  }
+  if (e.key === "ArrowLeft") bow.angle = Math.max(bow.angle - 0.1, -Math.PI);
+  if (e.key === "ArrowRight") bow.angle = Math.min(bow.angle + 0.1, 0);
 });
 
 // Sound control functions
@@ -160,7 +183,7 @@ function startPullSound() {
   if (!isPullingSoundPlaying) {
     pullSound.currentTime = 0;
     pullSound.loop = true;
-    pullSound.play().catch(e => console.log("Pull sound error:", e));
+    pullSound.play().catch((e) => console.log("Pull sound error:", e));
     isPullingSoundPlaying = true;
   }
 }
@@ -190,7 +213,7 @@ musicToggle.addEventListener("click", (e) => {
 
 // Game functions
 function shootArrow(targetX, targetY) {
-  const angle = Math.atan2(targetY - bow.y, targetX - bow.x);
+  const angle = bow.angle;
   arrows.push({
     x: bow.x,
     y: bow.y,
@@ -201,7 +224,7 @@ function shootArrow(targetX, targetY) {
   shootSound.currentTime = 0;
   shootSound.play();
   pullStrength = 0;
-  
+
   // Create string release effect
   createStringReleaseEffect(bow.x, bow.y, angle);
 }
@@ -265,30 +288,34 @@ function drawBullseye(x, y, strength) {
   showEffect(".bullseye", x, y, strength / 30);
   hitSound.currentTime = 0;
   hitSound.play();
-  
+
   // Create hit message
   const hitMessages = ["Bullseye!", "Perfect!", "Great Shot!", "Awesome!"];
   const message = hitMessages[Math.floor(Math.random() * hitMessages.length)];
-  
+
   const hitText = document.createElement("div");
   hitText.className = "hit-message";
   hitText.textContent = message;
   hitText.style.left = `${x}px`;
   hitText.style.top = `${y}px`;
   document.body.appendChild(hitText);
-  
-  gsap.fromTo(hitText, {
-    opacity: 1,
-    y: 0,
-    scale: 0.8
-  }, {
-    opacity: 0,
-    y: -100,
-    scale: 1.2,
-    duration: EFFECTS_DURATION,
-    ease: "power2.out",
-    onComplete: () => hitText.remove()
-  });
+
+  gsap.fromTo(
+    hitText,
+    {
+      opacity: 1,
+      y: 0,
+      scale: 0.8,
+    },
+    {
+      opacity: 0,
+      y: -100,
+      scale: 1.2,
+      duration: EFFECTS_DURATION,
+      ease: "power2.out",
+      onComplete: () => hitText.remove(),
+    }
+  );
 }
 
 function drawBow() {
@@ -296,35 +323,43 @@ function drawBow() {
   ctx.translate(bow.x, bow.y);
   ctx.rotate(bow.angle);
   ctx.scale(-1, 1);
-  const scale = 2.5;
 
-  // Bow body
-  ctx.strokeStyle = "#88ce02";
-  ctx.lineWidth = 5;
+  // --- Scale factor for bigger bow & string ---
+  const scaleFactor = 1.3; // Increase this to make bow bigger
+
+  // --- Draw bow.svg image ---
+  const bowImg = document.getElementById("bowImage");
+  const bowWidth = (bowImg.naturalWidth || 60) * scaleFactor;
+  const bowHeight = (bowImg.naturalHeight || 120) * scaleFactor;
+  ctx.drawImage(bowImg, -bowWidth / 2, -bowHeight / 2, bowWidth, bowHeight);
+
+  // === String Anchors (matched to bow limb tips like sample) ===
+  // These offsets are tuned to match inner notches visually
+  const tipOffsetX = -bowWidth / 2 + 14 * scaleFactor;   // inward from left
+  const tipOffsetYTop = -bowHeight / 2 + 12 * scaleFactor; // down from top tip
+  const tipOffsetYBottom = bowHeight / 2 - 12 * scaleFactor; // up from bottom tip
+
+  // --- Create blue → cyan → blue gradient ---
+  const gradient = ctx.createLinearGradient(
+    15 * scaleFactor, tipOffsetYTop,
+    15 * scaleFactor, tipOffsetYBottom
+  );
+  gradient.addColorStop(0, "#4A6CF7");
+  gradient.addColorStop(0.5, "#21E6E6");
+  gradient.addColorStop(1, "#4A6CF7");
+
+  // Draw the string
+  ctx.strokeStyle = gradient;
+  ctx.lineWidth = 1.5 * scaleFactor;
   ctx.beginPath();
-  ctx.moveTo(0, -30 * scale);
-  ctx.quadraticCurveTo(-30 * scale, 0, 0, 30 * scale);
+  ctx.moveTo(20 * scaleFactor, tipOffsetYTop);                 // Top tip
+  ctx.lineTo(pullStrength + 20 * scaleFactor, 0);              // Pulled middle
+  ctx.lineTo(20 * scaleFactor, tipOffsetYBottom);              // Bottom tip
   ctx.stroke();
 
-  // Bow string
-  ctx.strokeStyle = "white";
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.moveTo(0, -30 * scale);
-  ctx.lineTo(pullStrength, 0);
-  ctx.lineTo(0, 30 * scale);
-  ctx.stroke();
-
-  // Aiming guide
-  ctx.strokeStyle = "rgba(255,255,255,0.2)";
-  ctx.setLineDash([5, 10]);
-  ctx.beginPath();
-  ctx.moveTo(pullStrength, 0);
-  ctx.lineTo(-150, 0);
-  ctx.stroke();
-  ctx.setLineDash([]);
   ctx.restore();
 }
+
 
 function drawArrow(arrow) {
   ctx.save();

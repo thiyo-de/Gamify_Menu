@@ -11,7 +11,7 @@ html {
 
 canvas {
   display: block;
-  background: url("assets/bg.jpg") no-repeat center center;
+  background: url("assets/Asset\ 3.svg") no-repeat center center;
   background-size: cover;
   box-shadow: inset 0 0 0 1000px rgba(0, 0, 0, 0.5);
 }
@@ -86,7 +86,7 @@ canvas {
     transform: translateY(100vh) scale(1);
   }
   to {
-    transform: translateY(-10vh) scale(0.5);
+    transform: translateY(-50vh) scale(0.5);
   }
 }
 

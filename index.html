@@ -1,41 +1,70 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="UTF-8" />
     <title>Golden Cinematic Archery Menu</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="stylesheet" href="style.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
-</head>
-<body>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
     <canvas id="gameCanvas"></canvas>
 
-    <!-- Arrow SVG Image -->
-    <img id="arrowImage" src="arrow.svg" style="display:none;">
+    <!-- Custom Images -->
+    <img id="arrowImage" src="arrow.svg" style="display: none" />
+    <img id="bowImage" src="bow.svg" style="display: none" />
 
     <!-- SVG Effects Container -->
-    <svg id="effects" style="position:absolute; width:0; height:0; overflow:visible">
-        <!-- Miss Effect -->
-        <g class="miss" fill="#FFD700" opacity="0">
-            <path d="M358 194L363 118 386 120 400 153 416 121 440 119 446 203 419 212 416 163 401 180 380 160 381 204" />
-            <path d="M450 120L458 200 475 192 474 121" />
-            <path d="M537 118L487 118 485 160 515 162 509 177 482 171 482 193 529 199 538 148 501 146 508 133 537 137" />
-            <path d="M540 202L543 178 570 186 569 168 544 167 546 122 590 116 586 142 561 140 560 152 586 153 586 205" />
-            <path d="M595,215l5-23l31,0l-5,29L595,215z M627,176l13-70l-41-0l-0,70L627,176z" />
-        </g>
+    <svg
+      id="effects"
+      style="position: absolute; width: 0; height: 0; overflow: visible"
+    >
+      <!-- Miss Effect -->
+      <g class="miss" fill="#FFD700" opacity="0">
+        <path
+          d="M358 194L363 118 386 120 400 153 416 121 440 119 446 203 419 212 416 163 401 180 380 160 381 204"
+        />
+        <path d="M450 120L458 200 475 192 474 121" />
+        <path
+          d="M537 118L487 118 485 160 515 162 509 177 482 171 482 193 529 199 538 148 501 146 508 133 537 137"
+        />
+        <path
+          d="M540 202L543 178 570 186 569 168 544 167 546 122 590 116 586 142 561 140 560 152 586 153 586 205"
+        />
+        <path
+          d="M595,215l5-23l31,0l-5,29L595,215z M627,176l13-70l-41-0l-0,70L627,176z"
+        />
+      </g>
 
-        <!-- Bullseye Effect -->
-        <g class="bullseye" fill="#F4531C" opacity="0">
-            <path d="M322,159l15-21l-27-13l-32,13l15,71l41-14l7-32L322,159z M292,142h20l3,8l-16,8 L292,142z M321,182l-18,9l-4-18l23-2V182z" />
-            <path d="M340 131L359 125 362 169 381 167 386 123 405 129 392 183 351 186z" />
-            <path d="M413 119L402 188 450 196 454 175 422 175 438 120z" />
-            <path d="M432 167L454 169 466 154 451 151 478 115 453 113z" />
-            <path d="M524 109L492 112 466 148 487 155 491 172 464 167 463 184 502 191 513 143 487 141 496 125 517 126z" />
-            <path d="M537 114L512 189 558 199 566 174 533 175 539 162 553 164 558 150 543 145 547 134 566 148 575 124z" />
-            <path d="M577 118L587 158 570 198 587 204 626 118 606 118 598 141 590 112z" />
-            <path d="M635 122L599 198 643 207 649 188 624 188 630 170 639 178 645 162 637 158 649 143 662 151 670 134z" />
-            <path d="M649,220l4-21l28,4l-6,25L649,220z M681,191l40-79l-35-8L659,184L681,191z" />
-        </g>
+      <!-- Bullseye Effect -->
+      <g class="bullseye" fill="#F4531C" opacity="0">
+        <path
+          d="M322,159l15-21l-27-13l-32,13l15,71l41-14l7-32L322,159z M292,142h20l3,8l-16,8 L292,142z M321,182l-18,9l-4-18l23-2V182z"
+        />
+        <path
+          d="M340 131L359 125 362 169 381 167 386 123 405 129 392 183 351 186z"
+        />
+        <path d="M413 119L402 188 450 196 454 175 422 175 438 120z" />
+        <path d="M432 167L454 169 466 154 451 151 478 115 453 113z" />
+        <path
+          d="M524 109L492 112 466 148 487 155 491 172 464 167 463 184 502 191 513 143 487 141 496 125 517 126z"
+        />
+        <path
+          d="M537 114L512 189 558 199 566 174 533 175 539 162 553 164 558 150 543 145 547 134 566 148 575 124z"
+        />
+        <path
+          d="M577 118L587 158 570 198 587 204 626 118 606 118 598 141 590 112z"
+        />
+        <path
+          d="M635 122L599 198 643 207 649 188 624 188 630 170 639 178 645 162 637 158 649 143 662 151 670 134z"
+        />
+        <path
+          d="M649,220l4-21l28,4l-6,25L649,220z M681,191l40-79l-35-8L659,184L681,191z"
+        />
+      </g>
     </svg>
 
     <!-- UI Elements -->
@@ -43,16 +72,15 @@
 
     <!-- Game Rules -->
     <div id="gameLaws" class="no-select">
-        🎯 <b>Menu Navigation</b><br>
-        1. Pull and aim with mouse/touch<br>
-        2. Release to shoot the arrow<br>
-        3. Hit golden targets to navigate<br>
-        4. Press space for keyboard mode
+      🎯 <b>Menu Navigation</b><br />
+      1. Pull and aim with mouse/touch<br />
+      2. Release to shoot the arrow<br />
+      3. Hit golden targets to navigate<br />
     </div>
 
     <!-- Audio -->
     <audio id="bgMusic" loop>
-        <source src="assets/bg-music.mp3" type="audio/mpeg">
+      <source src="assets/bg-music.mp3" type="audio/mpeg" />
     </audio>
     <audio id="shootSound" src="assets/shoot.mp3" preload="auto"></audio>
     <audio id="hitSound" src="assets/hit.mp3" preload="auto"></audio>
@@ -61,5 +89,5 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
     <script src="script.js"></script>
-</body>
+  </body>
 </html>

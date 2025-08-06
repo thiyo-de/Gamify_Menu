@@ -24,62 +24,130 @@ let isMouseDown = false;
 let pullStrength = 0;
 let isPullingSoundPlaying = false;
 
-let menuTargets = [
-  { label: "Expert", url: "https://supabase-chatter.lovable.app/chat" },
-  { label: "Cancers", url: "#cancers" },
-  { label: "Media", url: "#media" },
-  { label: "Vision", url: "#vision" },
-  { label: "7 Music OP", url: "#music" },
-  { label: "Event&", url: "#events" },
-  { label: "Community", url: "#community" },
-  { label: "Home", url: "#home" },
-  { label: "Support", url: "#support" },
-  { label: "Dorado", url: "#dorado" },
-  { label: "Cliente", url: "#cliente" },
-  { label: "Bar-Vicita", url: "#barvicita" },
-].map((item) => {
-  const tempCanvas = document.createElement("canvas");
-  const tempCtx = tempCanvas.getContext("2d");
-  tempCtx.font = "bold 15px Orbitron, sans-serif";
-  const textWidth = tempCtx.measureText(item.label).width;
-  const maxWidth = 200;
-  const calculatedWidth = Math.min(maxWidth, Math.max(120, textWidth + 30));
+// --- Difficulty Settings ---
+const difficultySpeeds = {
+  noob: 1.5, // very slow
+  easy: 2.5, // normal
+  veteran: 3.5, // fast
+};
 
+// Default difficulty
+let currentDifficulty = "easy";
+
+// --- Menu targets with SVG icons + tooltips ---
+let menuTargets = [
+  { icon: "assets/icon1.svg", tooltip: "Agri", url: "#love" },
+  { icon: "assets/icon2.svg", tooltip: "Arts", url: "#music" },
+  { icon: "assets/icon3.svg", tooltip: "CI", url: "#camera" },
+  { icon: "assets/icon4.svg", tooltip: "Design", url: "#star" },
+  { icon: "assets/icon5.svg", tooltip: "Engineering", url: "#gift" },
+  { icon: "assets/icon6.svg", tooltip: "Entreprenurship", url: "#rocket" },
+  { icon: "assets/icon7.svg", tooltip: "Law", url: "#heart" },
+  { icon: "assets/icon8.svg", tooltip: "Health", url: "#smile" },
+  { icon: "assets/icon9.svg", tooltip: "Nursing", url: "#game" },
+  { icon: "assets/icon10.svg", tooltip: "Pharmacy", url: "#book" },
+].map((item) => {
+  const iconSize = 50;
   return {
     ...item,
-    x: Math.random() * (canvas.width - calculatedWidth - 40) + 20,
-    y: Math.random() * (canvas.height / 2 - 100) + 20,
-    width: calculatedWidth,
-    height: 35,
-    vx: (Math.random() - 0.5) * 2,
-    vy: (Math.random() - 0.5) * 2,
+    x: Math.random() * (canvas.width - iconSize - 40) + 20,
+    y: Math.random() * (canvas.height / 2 - iconSize - 20) + 20,
+    width: iconSize,
+    height: iconSize,
+    vx: (Math.random() - 0.5) * 2 * difficultySpeeds[currentDifficulty],
+    vy: (Math.random() - 0.5) * 2 * difficultySpeeds[currentDifficulty],
     element: null,
+    tooltipEl: null,
+    angle: Math.random() * Math.PI * 2,
   };
 });
+
+// --- Create icon & tooltip HTML elements ---
+menuTargets.forEach((target) => {
+  // Icon
+  target.element = document.createElement("img");
+  target.element.src = target.icon;
+  target.element.className = "icon-target";
+  target.element.style.left = target.x + "px";
+  target.element.style.top = target.y + "px";
+  document.body.appendChild(target.element);
+
+  // Tooltip
+  target.tooltipEl = document.createElement("div");
+  target.tooltipEl.innerText = target.tooltip;
+  target.tooltipEl.className = "tooltip";
+  document.body.appendChild(target.tooltipEl);
+});
+
+function toggleDifficultyMenu() {
+  const menu = document.getElementById("difficultyOptions");
+  const container = document.getElementById("difficultySelect");
+
+  const isOpen = menu.classList.toggle("show");
+
+  if (isOpen) {
+    container.classList.remove("closed");
+  } else {
+    container.classList.add("closed");
+  }
+}
+
+document.addEventListener("click", function (e) {
+  const dropdown = document.getElementById("difficultySelect");
+  if (!dropdown.contains(e.target)) {
+    document.getElementById("difficultyOptions").classList.remove("show");
+    dropdown.classList.add("closed");
+  }
+});
+
+// Start in closed state
+document.getElementById("difficultySelect").classList.add("closed");
+
+// --- Change difficulty with unique sound per difficulty ---
+function setDifficulty(level) {
+  // Play the correct sound for this difficulty
+  const sounds = {
+    noob: document.getElementById("difficultySoundNoob"),
+    easy: document.getElementById("difficultySoundEasy"),
+    veteran: document.getElementById("difficultySoundVeteran"),
+  };
+
+  if (sounds[level]) {
+    sounds[level].currentTime = 0;
+    sounds[level]
+      .play()
+      .catch((e) => console.log(`Sound for ${level} failed:`, e));
+  }
+
+  // Update current difficulty
+  currentDifficulty = level;
+  document.getElementById("difficultyCurrent").innerText = `Difficulty: ${
+    level.charAt(0).toUpperCase() + level.slice(1)
+  } ▼`;
+
+  // Update speeds
+  menuTargets.forEach((t) => {
+    t.vx = (Math.random() - 0.5) * 2 * difficultySpeeds[level];
+    t.vy = (Math.random() - 0.5) * 2 * difficultySpeeds[level];
+  });
+
+  // Highlight active option
+  document.querySelectorAll("#difficultyOptions div").forEach((opt) => {
+    opt.classList.remove("active");
+    if (opt.innerText.toLowerCase().includes(level)) {
+      opt.classList.add("active");
+    }
+  });
+
+  // Close dropdown
+  document.getElementById("difficultyOptions").classList.add("hidden");
+}
 
 let bow = {
   x: canvas.width / 2,
   y: canvas.height - 100,
   angle: -Math.PI / 2, // Initialize pointing straight up
 };
-
-// Initialize targets
-menuTargets.forEach((target) => {
-  target.element = document.createElement("div");
-  target.element.setAttribute("role", "button");
-  target.element.setAttribute(
-    "aria-label",
-    `${target.label} navigation button`
-  );
-  target.element.style.position = "absolute";
-  target.element.style.left = `${target.x}px`;
-  target.element.style.top = `${target.y}px`;
-  target.element.style.width = `${target.width}px`;
-  target.element.style.height = `${target.height}px`;
-  target.element.style.pointerEvents = "none";
-  target.element.style.opacity = "0";
-  document.body.appendChild(target.element);
-});
 
 // Create floating particles
 for (let i = 0; i < 120; i++) {
@@ -335,14 +403,16 @@ function drawBow() {
 
   // === String Anchors (matched to bow limb tips like sample) ===
   // These offsets are tuned to match inner notches visually
-  const tipOffsetX = -bowWidth / 2 + 14 * scaleFactor;   // inward from left
+  const tipOffsetX = -bowWidth / 2 + 14 * scaleFactor; // inward from left
   const tipOffsetYTop = -bowHeight / 2 + 12 * scaleFactor; // down from top tip
   const tipOffsetYBottom = bowHeight / 2 - 12 * scaleFactor; // up from bottom tip
 
   // --- Create blue → cyan → blue gradient ---
   const gradient = ctx.createLinearGradient(
-    15 * scaleFactor, tipOffsetYTop,
-    15 * scaleFactor, tipOffsetYBottom
+    15 * scaleFactor,
+    tipOffsetYTop,
+    15 * scaleFactor,
+    tipOffsetYBottom
   );
   gradient.addColorStop(0, "#4A6CF7");
   gradient.addColorStop(0.5, "#21E6E6");
@@ -352,14 +422,13 @@ function drawBow() {
   ctx.strokeStyle = gradient;
   ctx.lineWidth = 1.5 * scaleFactor;
   ctx.beginPath();
-  ctx.moveTo(20 * scaleFactor, tipOffsetYTop);                 // Top tip
-  ctx.lineTo(pullStrength + 20 * scaleFactor, 0);              // Pulled middle
-  ctx.lineTo(20 * scaleFactor, tipOffsetYBottom);              // Bottom tip
+  ctx.moveTo(20 * scaleFactor, tipOffsetYTop); // Top tip
+  ctx.lineTo(pullStrength + 20 * scaleFactor, 0); // Pulled middle
+  ctx.lineTo(20 * scaleFactor, tipOffsetYBottom); // Bottom tip
   ctx.stroke();
 
   ctx.restore();
 }
-
 
 function drawArrow(arrow) {
   ctx.save();
@@ -380,86 +449,72 @@ function drawArrow(arrow) {
   ctx.restore();
 }
 
+const compass = document.getElementById("compass");
+
+document.addEventListener("mousemove", (e) => {
+  const rect = compass.getBoundingClientRect();
+  const cx = rect.left + rect.width / 2;
+  const cy = rect.top + rect.height / 2;
+
+  let angle = Math.atan2(e.clientY - cy, e.clientX - cx) * (180 / Math.PI);
+  compass.style.transform = `rotate(${angle}deg)`;
+});
+
+// --- Draw and move targets ---
 function drawMenuTargets() {
   const screenPadding = 20;
+  const targetPadding = 15;
 
-  for (let target of menuTargets) {
-    // Update target position with boundary checks
-    target.x += target.vx;
-    target.y += target.vy;
+  for (let i = 0; i < menuTargets.length; i++) {
+    const a = menuTargets[i];
 
-    // Keep targets within bounds
-    if (
-      target.x <= screenPadding ||
-      target.x + target.width >= canvas.width - screenPadding
-    ) {
-      target.vx *= -1;
-      target.x = Math.max(
-        screenPadding,
-        Math.min(target.x, canvas.width - target.width - screenPadding)
-      );
-    }
-    if (
-      target.y <= screenPadding ||
-      target.y + target.height >= canvas.height / 2 - screenPadding
-    ) {
-      target.vy *= -1;
-      target.y = Math.max(
-        screenPadding,
-        Math.min(target.y, canvas.height / 2 - target.height - screenPadding)
-      );
-    }
+    // Movement
+    a.x += a.vx;
+    a.y += a.vy;
 
-    // Update accessibility button position
-    if (target.element) {
-      target.element.style.left = `${target.x}px`;
-      target.element.style.top = `${target.y}px`;
-    }
+    // Boundary bounce
+    if (a.x <= screenPadding) a.vx = Math.abs(a.vx);
+    if (a.x + a.width >= canvas.width - screenPadding) a.vx = -Math.abs(a.vx);
+    if (a.y <= screenPadding) a.vy = Math.abs(a.vy);
+    if (a.y + a.height >= canvas.height / 2 - screenPadding)
+      a.vy = -Math.abs(a.vy);
 
-    ctx.save();
-    ctx.beginPath();
-    ctx.fillStyle = "rgba(255,215,0,0.3)";
-    ctx.strokeStyle = "#FFA500";
-    ctx.lineWidth = 2;
-    ctx.roundRect(target.x, target.y, target.width, target.height, 15);
-    ctx.fill();
-    ctx.stroke();
+    // Collision with other targets
+    for (let j = i + 1; j < menuTargets.length; j++) {
+      const b = menuTargets[j];
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const distance = Math.hypot(dx, dy);
+      const minDist = (a.width + b.width) / 2 + targetPadding;
 
-    // Draw text with ellipsis if too long
-    ctx.fillStyle = "white";
-    ctx.font = "bold 14px Orbitron, sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
-    // Measure text and apply ellipsis if needed
-    const text = target.label;
-    let metrics = ctx.measureText(text);
-    let textWidth = metrics.width;
-    const maxTextWidth = target.width - 20; // Padding
-
-    if (textWidth > maxTextWidth) {
-      let ellipsis = "...";
-      let ellipsisWidth = ctx.measureText(ellipsis).width;
-      let charWidth = textWidth / text.length;
-      let charsToShow = Math.floor((maxTextWidth - ellipsisWidth) / charWidth);
-
-      if (charsToShow > 0) {
-        const displayText = text.substring(0, charsToShow) + ellipsis;
-        ctx.fillText(
-          displayText,
-          target.x + target.width / 2,
-          target.y + target.height / 2
-        );
+      if (distance < minDist) {
+        const angle = Math.atan2(dy, dx);
+        const overlap = (minDist - distance) / 2;
+        a.x -= Math.cos(angle) * overlap;
+        a.y -= Math.sin(angle) * overlap;
+        b.x += Math.cos(angle) * overlap;
+        b.y += Math.sin(angle) * overlap;
+        [a.vx, b.vx] = [b.vx, a.vx];
+        [a.vy, b.vy] = [b.vy, a.vy];
       }
-    } else {
-      ctx.fillText(
-        text,
-        target.x + target.width / 2,
-        target.y + target.height / 2
-      );
     }
 
-    ctx.restore();
+    // Update icon position
+    if (a.element) {
+      a.element.style.left = `${a.x}px`;
+      a.element.style.top = `${a.y}px`;
+    }
+
+    // Tooltip always moves relative to icon
+    if (a.tooltipEl) {
+      a.angle += 0.01; // orbit speed
+      const radius = 40; // distance from icon center
+      const tooltipX = a.x + a.width / 2 + Math.cos(a.angle) * radius;
+      const tooltipY = a.y + a.height / 2 + Math.sin(a.angle) * radius;
+
+      a.tooltipEl.style.left = `${tooltipX - a.tooltipEl.offsetWidth / 2}px`;
+      a.tooltipEl.style.top = `${tooltipY - a.tooltipEl.offsetHeight / 2}px`;
+    }
   }
 }
 
@@ -507,7 +562,7 @@ function animateTargetHit(target) {
   pulse.style.top = `${target.y}px`;
   pulse.style.width = `${target.width}px`;
   pulse.style.height = `${target.height}px`;
-  pulse.style.borderRadius = "20px";
+  pulse.style.borderRadius = "100px";
   pulse.style.border = "2px solid gold";
   pulse.style.zIndex = 10;
   document.body.appendChild(pulse);
@@ -590,15 +645,40 @@ function update() {
 
     const hitTarget = menuTargets.find((t) => checkCollision(arrow, t));
     if (hitTarget) {
+      // Existing effects
       triggerExplosion(arrow.x, arrow.y);
       drawBullseye(arrow.x, arrow.y, arrow.strength);
       animateTargetHit(hitTarget);
+
+      // ✅ New full-screen glowing goal message
+      const goalMsg = document.createElement("div");
+      goalMsg.className = "goal-hit-message";
+      goalMsg.innerHTML = `
+    Goal achieved! <br>
+    <small>Start your virtual tour and experience your university</small>
+  `;
+      document.body.appendChild(goalMsg);
+
+      gsap.fromTo(
+        goalMsg,
+        { opacity: 0, scale: 0.8 },
+        { opacity: 1, scale: 1.1, duration: 0.8, ease: "back.out(1.7)" }
+      );
+
+      gsap.to(goalMsg, {
+        opacity: 0,
+        scale: 1.4,
+        delay: 2.5,
+        duration: 1,
+        ease: "power2.in",
+        onComplete: () => goalMsg.remove(),
+      });
+
+      // Redirect after short delay
       setTimeout(() => {
         window.location.href = hitTarget.url;
       }, 400);
-      arrows.splice(i, 1);
-    } else if (arrow.y < 0 || arrow.x < 0 || arrow.x > canvas.width) {
-      drawMissMessage();
+
       arrows.splice(i, 1);
     }
   });

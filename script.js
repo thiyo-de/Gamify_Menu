@@ -643,9 +643,11 @@ function update() {
     arrow.y += Math.sin(arrow.angle) * arrow.speed;
     drawArrow(arrow);
 
+    let hitSomething = false;
+
     const hitTarget = menuTargets.find((t) => checkCollision(arrow, t));
     if (hitTarget) {
-      // Existing effects
+      hitSomething = true;
       triggerExplosion(arrow.x, arrow.y);
       drawBullseye(arrow.x, arrow.y, arrow.strength);
       animateTargetHit(hitTarget);
@@ -654,9 +656,9 @@ function update() {
       const goalMsg = document.createElement("div");
       goalMsg.className = "goal-hit-message";
       goalMsg.innerHTML = `
-    Goal achieved! <br>
-    <small>Start your virtual tour and experience your university</small>
-  `;
+      Goal achieved! <br>
+      <small>Start your virtual tour and experience your university</small>
+    `;
       document.body.appendChild(goalMsg);
 
       gsap.fromTo(
@@ -679,6 +681,15 @@ function update() {
         window.location.href = hitTarget.url;
       }, 400);
 
+      arrows.splice(i, 1);
+    }
+
+    // If arrow leaves bounds without hitting
+    if (
+      !hitSomething &&
+      (arrow.y < 0 || arrow.x < 0 || arrow.x > canvas.width)
+    ) {
+      drawMissMessage(); // plays sound + visual
       arrows.splice(i, 1);
     }
   });

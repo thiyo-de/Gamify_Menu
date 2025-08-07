@@ -46,7 +46,7 @@ A **cinematic, gamified website navigation system** where users interact using a
 
 ## 🧪 Live Demo
 
-> 💡 You can open `index.html` directly in any browser, or [Live Server](https://superb-gecko-26b001.netlify.app/)
+> 💡 You can open `index.html` directly in any browser, or [Demo](https://superb-gecko-26b001.netlify.app/)
 
 Make sure all assets are correctly linked when hosting.
 

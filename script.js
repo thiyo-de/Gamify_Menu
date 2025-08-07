@@ -15,6 +15,18 @@ const shootSound = document.getElementById("shootSound");
 const hitSound = document.getElementById("hitSound");
 const missSound = document.getElementById("missSound");
 const pullSound = document.getElementById("pullSound");
+
+const holdToFireOverlay = document.getElementById("holdToFireOverlay");
+
+// Show overlay on game start for 3.2 seconds
+window.addEventListener("load", () => {
+  holdToFireOverlay.classList.add("active");
+
+  setTimeout(() => {
+    holdToFireOverlay.classList.remove("active");
+  }, 3200);
+});
+
 pullSound.volume = 0.3;
 
 let arrows = [];
@@ -28,7 +40,7 @@ let isPullingSoundPlaying = false;
 const difficultySpeeds = {
   noob: 1.5, // very slow
   easy: 2.5, // normal
-  veteran: 3.5, // fast
+  veteran: 5, // fast
 };
 
 // Default difficulty
@@ -119,6 +131,11 @@ function setDifficulty(level) {
       .catch((e) => console.log(`Sound for ${level} failed:`, e));
   }
 
+  // Emoji rain based on difficulty
+  if (level === "noob") spawnEmojiRain("🤣");
+  else if (level === "easy") spawnEmojiRain("🙂");
+  else if (level === "veteran") spawnEmojiRain("🥶");
+
   // Update current difficulty
   currentDifficulty = level;
   document.getElementById("difficultyCurrent").innerText = `Difficulty: ${
@@ -142,6 +159,79 @@ function setDifficulty(level) {
   // Close dropdown
   document.getElementById("difficultyOptions").classList.add("hidden");
 }
+
+function spawnEmojiRain(emoji) {
+  const count = 25; // Number of falling emojis
+
+  for (let i = 0; i < count; i++) {
+    const emojiEl = document.createElement("div");
+    emojiEl.textContent = emoji;
+    emojiEl.className = "emoji-particle";
+    emojiEl.style.left = `${Math.random() * 100}vw`;
+    emojiEl.style.top = `-10px`;
+    document.body.appendChild(emojiEl);
+
+    const duration = 1.5 + Math.random(); // random fall duration between 1.5–2.5s
+    const offsetX = (Math.random() - 0.5) * 500; // horizontal drift
+
+    gsap.to(emojiEl, {
+      y: "50vh",
+      x: offsetX,
+      opacity: 0,
+      duration: duration,
+      ease: "power1.out",
+      onComplete: () => emojiEl.remove(),
+    });
+  }
+}
+
+// 🎯 Target Mode Dropdown Toggle
+function toggleTargetMenu() {
+  const menu = document.getElementById("targetModeOptions");
+  const container = document.getElementById("targetModeSelect");
+
+  const isOpen = menu.classList.toggle("show");
+  if (isOpen) {
+    container.classList.remove("closed");
+  } else {
+    container.classList.add("closed");
+  }
+}
+
+document
+  .getElementById("targetModeCurrent")
+  .addEventListener("click", toggleTargetMenu);
+
+document.addEventListener("click", function (e) {
+  const dropdown = document.getElementById("targetModeSelect");
+  if (!dropdown.contains(e.target)) {
+    document.getElementById("targetModeOptions").classList.remove("show");
+    dropdown.classList.add("closed");
+  }
+});
+
+// 🔥 Create Target Menu Items
+const targetOptions = document.getElementById("targetModeOptions");
+menuTargets.forEach((t, index) => {
+  const opt = document.createElement("div");
+
+  const icon = document.createElement("img");
+  icon.src = t.icon;
+
+  const label = document.createElement("span");
+  label.innerText = t.tooltip;
+
+  opt.appendChild(icon);
+  opt.appendChild(label);
+
+  opt.onclick = () => {
+    activateTargetMode(index);
+    document.getElementById("targetModeOptions").classList.remove("show");
+    document.getElementById("targetModeSelect").classList.add("closed");
+  };
+
+  targetOptions.appendChild(opt);
+});
 
 let bow = {
   x: canvas.width / 2,
@@ -238,6 +328,27 @@ canvas.addEventListener("touchend", (e) => {
     stopPullSound();
   }
   isMouseDown = false;
+
+  // 🕒 Delay reset after 0.8s if no further touch
+  setTimeout(() => {
+    if (!isMouseDown) {
+      // Animate bow.angle to -Math.PI / 2 (straight up)
+      gsap.to(bow, {
+        angle: -Math.PI / 2,
+        duration: 0.5,
+        ease: "power2.out",
+      });
+
+      // Optionally also center the bow horizontally
+      gsap.to(bow, {
+        x: canvas.width / 2,
+        duration: 0.5,
+        ease: "power2.out",
+      });
+
+      pullStrength = 0;
+    }
+  }, 1000);
 });
 
 // Keyboard controls (removed spacebar functionality)
@@ -460,6 +571,66 @@ document.addEventListener("mousemove", (e) => {
   compass.style.transform = `rotate(${angle}deg)`;
 });
 
+// 🧭 Touch-based compass rotation
+document.addEventListener("touchmove", (e) => {
+  if (e.touches.length > 0) {
+    const touch = e.touches[0];
+    const rect = compass.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+
+    const angle =
+      Math.atan2(touch.clientY - cy, touch.clientX - cx) * (180 / Math.PI);
+
+    gsap.to(compass, {
+      rotate: angle,
+      duration: 0.3,
+      ease: "power1.out",
+    });
+
+    // 👉 Optional: set a flag that touch is active
+    isTouchingCompass = true;
+  }
+});
+
+// 🏹 Arrow release and delayed reset
+canvas.addEventListener("touchend", (e) => {
+  if (isMouseDown) {
+    shootArrow(mouseX, mouseY);
+    stopPullSound();
+  }
+  isMouseDown = false;
+
+  // Reset touch flag after a short moment
+  isTouchingCompass = false;
+
+  setTimeout(() => {
+    if (!isMouseDown && !isTouchingCompass) {
+      // 🔄 Smooth bow reset
+      gsap.to(bow, {
+        angle: -Math.PI / 2,
+        duration: 0.5,
+        ease: "power2.out",
+      });
+
+      gsap.to(bow, {
+        x: canvas.width / 2,
+        duration: 0.5,
+        ease: "power2.out",
+      });
+
+      pullStrength = 0;
+
+      // 🔄 Smooth compass reset
+      gsap.to(compass, {
+        rotate: 90,
+        duration: 0.5,
+        ease: "power2.out",
+      });
+    }
+  }, 1000);
+});
+
 // --- Draw and move targets ---
 function drawMenuTargets() {
   const screenPadding = 20;
@@ -628,6 +799,36 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
   };
 }
 
+let targetModeActive = false;
+let focusedTarget = null;
+
+function activateTargetMode(index) {
+  // Reset previous state
+  exitTargetMode();
+
+  // Activate new target
+  targetModeActive = true;
+  focusedTarget = menuTargets[index];
+
+  // Add glow to the new target
+  focusedTarget.element.classList.add("menu-glow");
+
+  // Dim all others
+  menuTargets.forEach((t) => {
+    if (t !== focusedTarget) t.element.classList.add("dimmed");
+  });
+}
+
+function exitTargetMode() {
+  targetModeActive = false;
+  focusedTarget = null;
+
+  menuTargets.forEach((t) => {
+    t.element.classList.remove("menu-glow");
+    t.element.classList.remove("dimmed");
+  });
+}
+
 function update() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -647,41 +848,40 @@ function update() {
 
     const hitTarget = menuTargets.find((t) => checkCollision(arrow, t));
     if (hitTarget) {
-      hitSomething = true;
-      triggerExplosion(arrow.x, arrow.y);
-      drawBullseye(arrow.x, arrow.y, arrow.strength);
-      animateTargetHit(hitTarget);
+      if (!targetModeActive || hitTarget === focusedTarget) {
+        triggerExplosion(arrow.x, arrow.y);
+        drawBullseye(arrow.x, arrow.y, arrow.strength);
+        animateTargetHit(hitTarget);
 
-      // ✅ New full-screen glowing goal message
-      const goalMsg = document.createElement("div");
-      goalMsg.className = "goal-hit-message";
-      goalMsg.innerHTML = `
+        const goalMsg = document.createElement("div");
+        goalMsg.className = "goal-hit-message";
+        goalMsg.innerHTML = `
       Goal achieved! <br>
       <small>Start your virtual tour and experience your university</small>
     `;
-      document.body.appendChild(goalMsg);
+        document.body.appendChild(goalMsg);
 
-      gsap.fromTo(
-        goalMsg,
-        { opacity: 0, scale: 0.8 },
-        { opacity: 1, scale: 1.1, duration: 0.8, ease: "back.out(1.7)" }
-      );
+        gsap.fromTo(
+          goalMsg,
+          { opacity: 0, scale: 0.8 },
+          { opacity: 1, scale: 1.1, duration: 0.8, ease: "back.out(1.7)" }
+        );
+        gsap.to(goalMsg, {
+          opacity: 0,
+          scale: 1.4,
+          delay: 2.5,
+          duration: 1,
+          ease: "power2.in",
+          onComplete: () => goalMsg.remove(),
+        });
 
-      gsap.to(goalMsg, {
-        opacity: 0,
-        scale: 1.4,
-        delay: 2.5,
-        duration: 1,
-        ease: "power2.in",
-        onComplete: () => goalMsg.remove(),
-      });
+        setTimeout(() => {
+          window.location.href = hitTarget.url;
+        }, 400);
 
-      // Redirect after short delay
-      setTimeout(() => {
-        window.location.href = hitTarget.url;
-      }, 400);
-
-      arrows.splice(i, 1);
+        exitTargetMode();
+        arrows.splice(i, 1);
+      }
     }
 
     // If arrow leaves bounds without hitting
@@ -709,7 +909,50 @@ window.addEventListener("resize", () => {
   bow.y = canvas.height - 100;
 });
 
+document.getElementById("closeGameLaws").addEventListener("click", () => {
+  document.getElementById("gameLaws").style.display = "none";
+});
+
 // Prevent text selection
 document.addEventListener("selectstart", function (e) {
   e.preventDefault();
 });
+
+// 🎯 Target Mode Toggle Button (Mobile/Tablet)
+const targetBtn = document.getElementById("targetModeToggleBtn");
+const targetMenu = document.getElementById("targetModeSelect");
+
+// 🧠 Difficulty Mode Toggle Button (Mobile/Tablet)
+const diffBtn = document.getElementById("difficultyToggleBtn");
+const diffMenu = document.getElementById("difficultySelect");
+
+// Toggle Target Menu
+targetBtn.addEventListener("click", (e) => {
+  e.stopPropagation(); // Prevents triggering outside click
+  targetMenu.classList.toggle("menu-dropdown");
+  targetMenu.classList.toggle("show");
+  diffMenu.classList.remove("menu-dropdown", "show"); // Close other menu
+});
+
+// Toggle Difficulty Menu
+diffBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  diffMenu.classList.toggle("menu-dropdown");
+  diffMenu.classList.toggle("show");
+  targetMenu.classList.remove("menu-dropdown", "show"); // Close other menu
+});
+
+function closeMenusIfOutside(e) {
+  if (!targetMenu.contains(e.target) && !targetBtn.contains(e.target)) {
+    targetMenu.classList.remove("menu-dropdown", "show");
+  }
+
+  if (!diffMenu.contains(e.target) && !diffBtn.contains(e.target)) {
+    diffMenu.classList.remove("menu-dropdown", "show");
+  }
+}
+
+// 🔄 Listen to all interaction types: click + touch
+["click", "touchstart"].forEach((eventType) =>
+  document.addEventListener(eventType, closeMenusIfOutside)
+);

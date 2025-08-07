@@ -40,3 +40,39 @@ A **cinematic, gamified website navigation system** where users interact using a
 ├── script.js # All interaction logic, physics, UI control
 └── README.md # This file!
  ```
+
+
+---
+
+## 🧪 Live Demo
+
+> 💡 You can open `index.html` directly in any browser, or [Live Server](https://superb-gecko-26b001.netlify.app/)
+
+Make sure all assets are correctly linked when hosting.
+
+---
+
+## 🕹 Controls
+
+| Device   | Interaction        | Description                                 |
+|----------|--------------------|---------------------------------------------|
+| Desktop  | Hold Right Mouse   | Aim and shoot arrow                         |
+| Mobile   | Tap & Hold Screen  | Aim and release to shoot                    |
+| All      | 🎯 Button           | Opens the target selector menu              |
+| All      | 🧠 Button           | Opens the difficulty selector menu          |
+| All      | Click outside      | Closes any open menu dropdowns              |
+
+---
+
+## ⚙️ Customization
+
+You can modify your menu icons and tooltips in `script.js` using the `menuTargets` array:
+
+```js
+let menuTargets = [
+  { icon: "assets/icon1.svg", tooltip: "Home", url: "#home" },
+  { icon: "assets/icon2.svg", tooltip: "About", url: "#about" },
+  { icon: "assets/icon3.svg", tooltip: "Projects", url: "#projects" },
+  // Add or remove icons as needed
+];
+

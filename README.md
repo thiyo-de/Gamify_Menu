@@ -26,4 +26,17 @@ A **cinematic, gamified website navigation system** where users interact using a
 ---
 
 ## 📁 Folder Structure
-
+ ```
+│
+├── assets/ # All images, icons, SVGs, audio
+│ ├── arrow.svg
+│ ├── compass.svg
+│ ├── icon1.svg ...
+│ ├── bg-music.mp3
+│ └── shoot.mp3, hit.mp3, miss.mp3, etc.
+│
+├── index.html # Main HTML file
+├── style.css # Complete visual styling (desktop + mobile)
+├── script.js # All interaction logic, physics, UI control
+└── README.md # This file!
+ ```
